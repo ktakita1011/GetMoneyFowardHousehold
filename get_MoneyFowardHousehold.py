@@ -3,7 +3,29 @@ from time import sleep
 from selenium import webdriver
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.common.action_chains import ActionChains
+from selenium.webdriver.common.by import By
 from bs4 import BeautifulSoup
+import pandas as pd
+
+def get_df_from_table_elements(trs):
+    lines = []
+    for i in range(1,len(trs)):
+        tds = trs[i].find_elements(By.TAG_NAME, "td")
+        line = []
+        for j in range(0,len(tds)):
+            if j < len(tds)-1:
+                line.append("%s\t" % (tds[j].text))
+            else:
+                line.append("%s" % (tds[j].text))
+        lines.append(line)
+
+    df = pd.DataFrame(lines)
+    df.columns = ['品目', '金額', '割合']
+    df['割合'] = df['割合'].str.replace('%', '').astype(float)
+    df['品目'] = df['品目'].str.replace('\t', '')
+    df['金額'] = df['金額'].str.replace('円\t', '')
+    df['金額'] = df['金額'].str.replace(',', '').astype(int)
+    return df
 
 browser = webdriver.Chrome(r'C:\slenium\chromedriver.exe')
 
@@ -57,7 +79,8 @@ goto_shushi = browser.find_element_by_xpath(
 goto_shushi.click()
 sleep(3)
 
+table = browser.find_element_by_id('table-outgo')
+trs = table.find_elements(By.TAG_NAME, "tr")
 
-html = browser.page_source.encode('utf-8')
-soup = BeautifulSoup(html, 'lxml')
-#soup.find_all({'div': 'container-large with-ad'})
+df = get_df_from_table_elements(trs)
+df.to_csv('収支一覧.csv')
